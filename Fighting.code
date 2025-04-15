@@ -1,0 +1,909 @@
+import pygame
+import sys
+
+pygame.init()
+WIDTH, HEIGHT = 800, 400
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+clock = pygame.time.Clock()
+font = pygame.font.SysFont(None, 40)
+
+# Colors
+WHITE = (255, 255, 255)
+RED = (200, 50, 50)
+BLUE = (50, 50, 200)
+BLACK = (0, 0, 0)
+
+# Fighter class
+class Fighter:
+    def __init__(self, x, y, color, controls):
+        self.rect = pygame.Rect(x, y, 40, 80)
+        self.color = color
+        self.health = 100
+        self.vel_y = 0
+        self.on_ground = True
+        self.attacking = False
+        self.controls = controls
+        self.attack_cooldown = 0
+
+    def move(self, keys):
+        speed = 5
+        gravity = 0.5
+        jump_strength = 10
+
+        if keys[self.controls['left']]:
+            self.rect.x -= speed
+        if keys[self.controls['right']]:
+            self.rect.x += speed
+        if keys[self.controls['jump']] and self.on_ground:
+            self.vel_y = -jump_strength
+            self.on_ground = False
+
+        self.vel_y += gravity
+        self.rect.y += self.vel_y
+
+        if self.rect.bottom >= HEIGHT - 10:
+            self.rect.bottom = HEIGHT - 10
+            self.vel_y = 0
+            self.on_ground = True
+
+        if keys[self.controls['attack']] and self.attack_cooldown == 0:
+            self.attacking = True
+            self.attack_cooldown = 30
+        else:
+            self.attacking = False
+
+        if self.attack_cooldown > 0:
+            self.attack_cooldown -= 1
+
+    def draw(self, surface):
+        pygame.draw.rect(surface, self.color, self.rect)
+        if self.attacking:
+            atk_rect = pygame.Rect(self.rect.right, self.rect.y + 20, 20, 10)
+            pygame.draw.rect(surface, RED, atk_rect)
+
+    def attack(self, opponent):
+        if self.attacking:
+            attack_range = pygame.Rect(self.rect.right, self.rect.y + 20, 20, 10)
+            if attack_range.colliderect(opponent.rect):
+                opponent.health -= 1
+
+def draw_health_bar(fighter, x, y, color):
+    pygame.draw.rect(screen, BLACK, (x - 2, y - 2, 204, 24))
+    pygame.draw.rect(screen, color, (x, y, fighter.health * 2, 20))
+
+# Controls
+p1_controls = {'left': pygame.K_a, 'right': pygame.K_d, 'jump': pygame.K_w, 'attack': pygame.K_SPACE}
+p2_controls = {'left': pygame.K_LEFT, 'right': pygame.K_RIGHT, 'jump': pygame.K_UP, 'attack': pygame.K_RETURN}
+
+# Fighters
+fighter1 = Fighter(100, HEIGHT - 90, BLUE, p1_controls)
+fighter2 = Fighter(600, HEIGHT - 90, RED, p2_controls)
+
+# Main game loop
+running = True
+while running:
+    clock.tick(60)
+    screen.fill(WHITE)
+    keys = pygame.key.get_pressed()
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    fighter1.move(keys)
+    fighter2.move(keys)
+    fighter1.attack(fighter2)
+    fighter2.attack(fighter1)
+
+    fighter1.draw(screen)
+    fighter2.draw(screen)
+
+    draw_health_bar(fighter1, 50, 20, BLUE)
+    draw_health_bar(fighter2, 550, 20, RED)
+
+    # Win condition
+    if fighter1.health <= 0:
+        screen.blit(font.render("Player 2 Wins!", True, RED), (300, 180))
+    elif fighter2.health <= 0:
+        screen.blit(font.render("Player 1 Wins!", True, BLUE), (300, 180))
+
+    pygame.display.flip()
+
+pygame.quit()
+sys.exit()
+import pygame
+
+class AnimatedSprite(pygame.sprite.Sprite):
+    def __init__(self, image_paths, position):
+        super().__init__()
+        self.images = [pygame.image.load(img).convert_alpha() for img in image_paths]
+        self.index = 0
+        self.image = self.images[self.index]
+        self.rect = self.image.get_rect(topleft=position)
+        self.animation_speed = 0.1
+        self.current_time = 0
+
+    def update(self, dt):
+        self.current_time += dt
+        if self.current_time >= self.animation_speed:
+            self.current_time = 0
+            self.index = (self.index + 1) % len(self.images)
+            self.image = self.images[self.index]
+clock = pygame.time.Clock()
+running = True
+while running:
+    dt = clock.tick(60) / 1000  # Delta time in seconds.
+    animated_sprite.update(dt)
+    # ... rest of your game loop ...
+class AIOpponent(pygame.sprite.Sprite):
+    def __init__(self, image_paths, position, target):
+        super().__init__()
+        self.images = [pygame.image.load(img).convert_alpha() for img in image_paths]
+        self.index = 0
+        self.image = self.images[self.index]
+        self.rect = self.image.get_rect(topleft=position)
+        self.target = target
+        self.speed = 2
+        self.attack_range = 50
+        self.attack_cooldown = 1.0  # seconds
+        self.last_attack_time = 0
+
+    def update(self, dt, current_time):
+        # Move towards the player
+        if self.rect.x < self.target.rect.x:
+            self.rect.x += self.speed
+        elif self.rect.x > self.target.rect.x:
+            self.rect.x -= self.speed
+
+        # Attack if in range and cooldown has passed
+        if abs(self.rect.x - self.target.rect.x) <= self.attack_range:
+            if current_time - self.last_attack_time >= self.attack_cooldown:
+                self.attack()
+                self.last_attack_time = current_time
+
+        # Update animation
+        self.index = (self.index + 1) % len(self.images)
+        self.image = self.images[self.index]
+
+    def attack(self):
+        print("AI attacks!")
+current_time = pygame.time.get_ticks() / 1000  # Current time in seconds
+ai_opponent.update(dt, current_time)
+import pygame
+
+# Initialize Pygame
+pygame.init()
+screen = pygame.display.set_mode((800, 600))
+clock = pygame.time.Clock()
+
+# Load images for player and AI opponent
+player_images = ['images/player_walk1.png', 'images/player_walk2.png']
+ai_images = ['images/ai_walk1.png', 'images/ai_walk2.png']
+
+# Create player and AI opponent instances
+player = AnimatedSprite(player_images, (100, 500))
+ai_opponent = AIOpponent(ai_images, (600, 500), player)
+
+# Create sprite groups
+all_sprites = pygame.sprite.Group()
+all_sprites.add(player)
+all_sprites.add(ai_opponent)
+
+running = True
+while running:
+    dt = clock.tick(60) / 1000  # Delta time in seconds
+    current_time = pygame.time.get_ticks() / 1000  # Current time in seconds
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    # Update sprites
+    player.update(dt)
+    ai_opponent.update(dt, current_time)
+
+    # Draw everything
+    screen.fill((255, 255, 255))  # Clear screen with white
+    all_sprites.draw(screen)
+    pygame.display.flip()
+
+pygame.quit()
+import pygame
+import sys
+import os
+
+# Initialize Pygame
+pygame.init()
+pygame.mixer.init()
+
+# Screen dimensions
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("2D Fighting Game")
+
+# Clock for controlling frame rate
+clock = pygame.time.Clock()
+FPS = 60
+
+# Load background image
+background = pygame.image.load("assets/backgrounds/street.png").convert()
+
+# Load sound effects
+attack_sound = pygame.mixer.Sound("assets/sounds/attack.wav")
+hit_sound = pygame.mixer.Sound("assets/sounds/hit.wav")
+
+# Colors
+WHITE = (255, 255, 255)
+RED = (200, 50, 50)
+BLUE = (50, 50, 200)
+BLACK = (0, 0, 0)
+
+# Fighter class
+class Fighter(pygame.sprite.Sprite):
+    def __init__(self, x, y, sprites, controls=None, is_ai=False):
+        super().__init__()
+        self.sprites = sprites
+        self.image = self.sprites['idle'][0]
+        self.rect = self.image.get_rect(topleft=(x, y))
+        self.health = 100
+        self.vel_y = 0
+        self.on_ground = True
+        self.attacking = False
+        self.attack_cooldown = 0
+        self.controls = controls
+        self.is_ai = is_ai
+        self.direction = 1  # 1: right, -1: left
+        self.frame_index = 0
+        self.animation_timer = 0
+        self.current_action = 'idle'
+
+    def move(self, keys, target):
+        speed = 5
+        gravity = 0.5
+        jump_strength = 10
+
+        dx = 0
+        dy = 0
+
+        if self.is_ai:
+            # Simple AI: move towards the player
+            if self.rect.x < target.rect.x:
+                dx = speed
+                self.direction = 1
+            elif self.rect.x > target.rect.x:
+                dx = -speed
+                self.direction = -1
+
+            # Attack if in range
+            if abs(self.rect.x - target.rect.x) < 60 and self.attack_cooldown == 0:
+                self.attacking = True
+                self.attack_cooldown = 60
+                attack_sound.play()
+        else:
+            if keys[self.controls['left']]:
+                dx = -speed
+                self.direction = -1
+            if keys[self.controls['right']]:
+                dx = speed
+                self.direction = 1
+            if keys[self.controls['jump']] and self.on_ground:
+                self.vel_y = -jump_strength
+                self.on_ground = False
+            if keys[self.controls['attack']] and self.attack_cooldown == 0:
+                self.attacking = True
+                self.attack_cooldown = 60
+                attack_sound.play()
+
+        # Apply gravity
+        self.vel_y += gravity
+        dy += self.vel_y
+
+        # Update position
+        self.rect.x += dx
+        self.rect.y += dy
+
+        # Check ground collision
+        if self.rect.bottom >= HEIGHT - 50:
+            self.rect.bottom = HEIGHT - 50
+            self.vel_y = 0
+            self.on_ground = True
+
+        # Update cooldown
+        if self.attack_cooldown > 0:
+            self.attack_cooldown -= 1
+
+        # Set action
+        if self.attacking:
+            self.current_action = 'attack'
+        elif not self.on_ground:
+            self.current_action = 'jump'
+        elif dx != 0:
+            self.current_action = 'walk'
+        else:
+            self.current_action = 'idle'
+
+    def update(self):
+        # Handle animation
+        self.animation_timer += 1
+        if self.animation_timer >= 10:
+            self.animation_timer = 0
+            self.frame_index = (self.frame_index + 1) % len(self.sprites[self.current_action])
+            self.image = self.sprites[self.current_action][self.frame_index]
+            if self.direction == -1:
+                self.image = pygame.transform.flip(self.image, True, False)
+
+        # Reset attack
+        if self.attacking and self.frame_index == len(self.sprites['attack']) - 1:
+            self.attacking = False
+            self.frame_index = 0
+
+    def attack(self, target):
+        if self.attacking:
+            attack_rect = pygame.Rect(self.rect.centerx + self.direction * 40, self.rect.y + 20, 40, 20)
+            if attack_rect.colliderect(target.rect):
+                target.health -= 10
+                hit_sound.play()
+
+    def draw(self, surface):
+        surface.blit(self.image, self.rect.topleft)
+
+# Load sprite images
+def load_sprites(folder):
+    actions = ['idle', 'walk', 'jump', 'attack']
+    sprites = {}
+    for action in actions:
+        sprites[action] = []
+        for i in range(1, 5):
+            path = os.path.join(folder, f"{action}_{i}.png")
+            if os.path.exists(path):
+                image = pygame.image.load(path).convert_alpha()
+                sprites[action].append(image)
+    return sprites
+
+# Load sprites for both fighters
+player_sprites = load_sprites("assets/player")
+ai_sprites = load_sprites("assets/ai")
+
+# Define controls for player
+player_controls = {
+    'left': pygame.K_a,
+    'right': pygame.K_d,
+    'jump': pygame.K_w,
+
+::contentReference[oaicite:15]{index=15}
+ 
+    'attack': pygame.K_SPACE
+}
+
+# Create fighters
+player = Fighter(100, HEIGHT - 150, player_sprites, controls=player_controls)
+ai = Fighter(600, HEIGHT - 150, ai_sprites, is_ai=True)
+
+# Group for updating
+fighters = [player, ai]
+
+def draw_health_bar(x, y, health, color):
+    pygame.draw.rect(screen, BLACK, (x - 2, y - 2, 204, 24))  # border
+    pygame.draw.rect(screen, color, (x, y, max(0, health * 2), 20))  # health
+
+# Main game loop
+running = True
+while running:
+    dt = clock.tick(FPS)
+    keys = pygame.key.get_pressed()
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    # Update fighters
+    player.move(keys, ai)
+    ai.move(keys, player)
+
+    for f in fighters:
+        f.update()
+
+    # Handle attacks
+    player.attack(ai)
+    ai.attack(player)
+
+    # Draw everything
+    screen.blit(background, (0, 0))
+    draw_health_bar(50, 30, player.health, BLUE)
+    draw_health_bar(550, 30, ai.health, RED)
+
+    for f in fighters:
+        f.draw(screen)
+
+    # Check win condition
+    if player.health <= 0 or ai.health <= 0:
+        winner = "Player" if ai.health <= 0 else "AI"
+        font = pygame.font.SysFont(None, 60)
+        text = font.render(f"{winner} Wins!", True, (255, 0, 0))
+        screen.blit(text, (WIDTH // 2 - 100, HEIGHT // 2 - 30))
+        pygame.display.flip()
+        pygame.time.delay(3000)
+        running = False
+
+    pygame.display.flip()
+
+pygame.quit()
+sys.exit()
+your_game/
+│
+├── main.py
+├── assets/
+│   ├── backgrounds/
+│   │   └── street.png
+│   ├── player/
+│   │   ├── idle_1.png
+│   │   ├── walk_1.png
+│   │   └── ...
+│   ├── ai/
+│   │   ├── idle_1.png
+│   │   └── ...
+│   └── sounds/
+│       ├── attack.wav
+│       └── hit.wav
+# At game start: display available fighters
+fighters = ["Ninja", "Brawler"]
+selected = 0
+
+while selecting:
+    screen.fill((0, 0, 0))
+    font = pygame.font.SysFont(None, 40)
+    for i, name in enumerate(fighters):
+        color = (255, 0, 0) if i == selected else (255, 255, 255)
+        text = font.render(name, True, color)
+        screen.blit(text, (WIDTH//2 - 50, 100 + i * 50))
+
+    for event in pygame.event.get():
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_DOWN:
+                selected = (selected + 1) % len(fighters)
+            elif event.key == pygame.K_UP:
+                selected = (selected - 1) % len(fighters)
+            elif event.key == pygame.K_RETURN:
+                player_character = fighters[selected]
+                selecting = False
+fighting_game/
+├── assets/
+│   ├── backgrounds/
+│   │   ├── stage1.png
+│   │   └── stage2.png
+│   ├── characters/
+│   │   ├── ninja/
+│   │   │   ├── idle/
+│   │   │   ├── walk/
+│   │   │   ├── jump/
+│   │   │   ├── attack/
+│   │   │   └── special/
+│   │   └── brawler/
+│   │       ├── idle/
+│   │       ├── walk/
+│   │       ├── jump/
+│   │       ├── attack/
+│   │       └── special/
+│   └── sounds/
+│       ├── attack.wav
+│       ├── hit.wav
+│       ├── special.wav
+│       └── menu_select.wav
+├── main.py
+└── README.md
+import pygame
+import sys
+
+pygame.init()
+screen = pygame.display.set_mode((800, 600))
+pygame.display.set_caption("2D Fighting Game")
+font = pygame.font.SysFont(None, 48)
+
+def draw_text(text, font, color, surface, x, y):
+    textobj = font.render(text, True, color)
+    rect = textobj.get_rect()
+    rect.center = (x, y)
+    surface.blit(textobj, rect)
+
+def main_menu():
+    while True:
+        screen.fill((0, 0, 0))
+        draw_text('MAIN MENU', font, (255, 255, 255), screen, 400, 100)
+        draw_text('1. Start Game', font, (255, 255, 255), screen, 400, 200)
+        draw_text('2. Options', font, (255, 255, 255), screen, 400, 300)
+        draw_text('3. Quit', font, (255, 255, 255), screen, 400, 400)
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_1:
+                    return  # Proceed to character selection
+                elif event.key == pygame.K_3:
+                    pygame.quit()
+                    sys.exit()
+def character_selection():
+    characters = ['ninja', 'brawler']
+    selected = 0
+    while True:
+        screen.fill((0, 0, 0))
+        draw_text('SELECT YOUR CHARACTER', font, (255, 255, 255), screen, 400, 100)
+        for i, char in enumerate(characters):
+            color = (255, 0, 0) if i == selected else (255, 255, 255)
+            draw_text(char.upper(), font, color, screen, 400, 200 + i * 100)
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    selected = (selected - 1) % len(characters)
+                elif event.key == pygame.K_DOWN:
+                    selected = (selected + 1) % len(characters)
+                elif event.key == pygame.K_RETURN:
+                    return characters[selected]
+def stage_selection():
+    stages = ['stage1', 'stage2']
+    selected = 0
+    while True:
+        screen.fill((0, 0, 0))
+        draw_text('SELECT STAGE', font, (255, 255, 255), screen, 400, 100)
+        for i, stage in enumerate(stages):
+            color = (0, 255, 0) if i == selected else (255, 255, 255)
+            draw_text(stage.upper(), font, color, screen, 400, 200 + i * 100)
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    selected = (selected - 1) % len(stages)
+                elif event.key == pygame.K_DOWN:
+                    selected = (selected + 1) % len(stages)
+                elif event.key == pygame.K_RETURN:
+                    return stages[selected]
+class Fighter(pygame.sprite.Sprite):
+    def __init__(self, ...):
+        ...
+        self.special_cooldown = 0
+
+    def update(self):
+        ...
+        if self.special_cooldown > 0:
+            self.special_cooldown -= 1
+
+    def special_attack(self):
+        if self.special_cooldown == 0:
+            # Trigger special attack animation and effects
+            self.special_cooldown = 300  # Cooldown duration in frames
+combo_count = 0
+combo_timer
+::contentReference[oaicite:0]{index=0}
+ 
+import pygame
+import time
+
+class ComboManager:
+    def __init__(self):
+        self.combo_sequence = []
+        self.combo_timer = 0
+        self.combo_definitions = {
+            ('DOWN', 'RIGHT', 'ATTACK'): 'Fireball',
+            ('LEFT', 'LEFT', 'ATTACK'): 'Dash Punch'
+        }
+        self.combo_timeout = 1.0  # seconds
+
+    def update(self, event):
+        current_time = time.time()
+        if event.type == pygame.KEYDOWN:
+            key_name = pygame.key.name(event.key).upper()
+            self.combo_sequence.append((key_name, current_time))
+            self.clean_sequence(current_time)
+            return self.check_combo()
+        return None
+
+    def clean_sequence(self, current_time):
+        # Remove inputs older than the timeout
+        self.combo_sequence = [(k, t) for k, t in self.combo_sequence if current_time - t <= self.combo_timeout]
+
+    def check_combo(self):
+        keys = [k for k, t in self.combo_sequence]
+        for combo_keys, move in self.combo_definitions.items():
+            if tuple(keys[-len(combo_keys):]) == combo_keys:
+                self.combo_sequence.clear()
+                return move
+        return None
+combo_manager = ComboManager()
+
+for event in pygame.event.get():
+    special_move = combo_manager.update(event)
+    if special_move:
+        player.execute_special_move(special_move)
+class Player(pygame.sprite.Sprite):
+    def __init__(self, controls, position):
+        super().__init__()
+        self.controls = controls
+        self.image = pygame.Surface((50, 100))
+        self.image.fill((255, 0, 0))
+        self.rect = self.image.get_rect(topleft=position)
+        self.speed = 5
+
+    def update(self, keys_pressed):
+        if keys_pressed[self.controls['left']]:
+            self.rect.x -= self.speed
+        if keys_pressed[self.controls['right']]:
+            self.rect.x += self.speed
+        if keys_pressed[self.controls['jump']]:
+            self.rect.y -= self.speed
+        if keys_pressed[self.controls['attack']]:
+            self.attack()
+
+    def attack(self):
+        # Implement attack logic
+        pass
+player1_controls = {
+    'left': pygame.K_a,
+    'right': pygame.K_d,
+    'jump': pygame.K_w,
+    'attack': pygame.K_SPACE
+}
+
+player2_controls = {
+    'left': pygame.K_LEFT,
+    'right': pygame.K_RIGHT,
+    'jump': pygame.K_UP,
+    'attack': pygame.K_RETURN
+}
+
+player1 = Player(player1_controls, (100, 300))
+player2 = Player(player2_controls, (600, 300))
+keys_pressed = pygame.key.get_pressed()
+player1.update(keys_pressed)
+player2.update(keys_pressed)
+fighting_game/
+├── assets/
+│   ├── backgrounds/
+│   │   ├── stage1.png
+│   │   └── stage2.png
+│   ├── characters/
+│   │   ├── ninja/
+│   │   │   ├── idle/
+│   │   │   ├── walk/
+│   │   │   ├── jump/
+│   │   │   ├── attack/
+│   │   │   └── special/
+│   │   └── brawler/
+│   │       ├── idle/
+│   │       ├── walk/
+│   │       ├── jump/
+│   │       ├── attack/
+│   │       └── special/
+│   └── sounds/
+│       ├── attack.wav
+│       ├── hit.wav
+│       ├── special.wav
+│       └── menu_select.wav
+├── main.py
+└── README.md
+import pygame
+import time
+
+class ComboManager:
+    def __init__(self):
+        self.combo_sequence = []
+        self.combo_timer = 0
+        self.combo_definitions = {
+            ('DOWN', 'RIGHT', 'ATTACK'): 'Fireball',
+            ('LEFT', 'LEFT', 'ATTACK'): 'Dash Punch'
+        }
+        self.combo_timeout = 1.0  # seconds
+
+    def update(self, event):
+        current_time = time.time()
+        if event.type == pygame.KEYDOWN:
+            key_name = pygame.key.name(event.key).upper()
+            self.combo_sequence.append((key_name, current_time))
+            self.clean_sequence(current_time)
+            self.check_combo()
+
+    def clean_sequence(self, current_time):
+        # Remove inputs older than the timeout
+        self.combo_sequence = [
+            (key, t) for key, t in self.combo_sequence
+            if current_time - t <= self.combo_timeout
+        ]
+
+    def check_combo(self):
+        keys = [key for key, _ in self.combo_sequence]
+        for combo_keys, move in self.combo_definitions.items():
+            if keys[-len(combo_keys):] == list(combo_keys):
+                print(f"Combo executed: {move}")
+                self.combo_sequence.clear()
+                break
+class Player:
+    def __init__(self, controls):
+        self.controls = controls
+        # Initialize other player attributes
+
+    def handle_input(self, keys):
+        if keys[self.controls['left']]:
+            self.move_left()
+        if keys[self.controls['right']]:
+            self.move_right()
+        if keys[self.controls['attack']]:
+            self.attack()
+        if keys[self.controls['special']]:
+            self.special_attack()
+
+# Define controls for both players
+player1_controls = {
+    'left': pygame.K_a,
+    'right': pygame.K_d,
+    'attack': pygame.K_f,
+    'special': pygame.K_g
+}
+
+player2_controls = {
+    'left': pygame.K_LEFT,
+    'right': pygame.K_RIGHT,
+    'attack': pygame.K_k,
+    'special': pygame.K_l
+}
+
+# Instantiate players
+player1 = Player(player1_controls)
+player2 = Player(player2_controls)
+
+# In the game loop
+keys = pygame.key.get_pressed()
+player1.handle_input(keys)
+player2.handle_input(keys)
+import pygame
+import time
+
+class ComboManager:
+    def __init__(self):
+        self.combo_sequence = []
+        self.combo_timer = 0
+        self.combo_definitions = {
+            ('DOWN', 'RIGHT', 'ATTACK'): 'Fireball',
+            ('LEFT', 'LEFT', 'ATTACK'): 'Dash Punch'
+        }
+        self.combo_timeout = 1.0  # seconds
+
+    def update(self, event):
+        current_time = time.time()
+        if event.type == pygame.KEYDOWN:
+            key_name = pygame.key.name(event.key).upper()
+            self.combo_sequence.append((key_name, current_time))
+            # Remove old inputs
+            self.combo_sequence = [(k, t) for k, t in self.combo_sequence if current_time - t <= self.combo_timeout]
+            # Check for combos
+            keys_only = [k for k, t in self.combo_sequence]
+            for combo_keys, move in self.combo_definitions.items():
+                if tuple(keys_only[-len(combo_keys):]) == combo_keys:
+                    print(f'Combo executed: {move}')
+                    self.combo_sequence.clear()
+                    return move
+        return None
+# Define controls
+player1_controls = {
+    'up': pygame.K_w,
+    'down': pygame.K_s,
+    'left': pygame.K_a,
+    'right': pygame.K_d,
+    'attack': pygame.K_f
+}
+
+player2_controls = {
+    'up': pygame.K_UP,
+    'down': pygame.K_DOWN,
+    'left': pygame.K_LEFT,
+    'right': pygame.K_RIGHT,
+    'attack': pygame.K_RSHIFT
+}
+
+# Initialize players
+player1 = Fighter(100, HEIGHT - 150, player1_sprites, controls=player1_controls)
+player2 = Fighter(600, HEIGHT - 150, player2_sprites, controls=player2_controls)
+
+# In the game loop
+keys = pygame.key.get_pressed()
+player1.move(keys)
+player2.move(keys)
+import pygame
+import time
+
+class ComboManager:
+    def __init__(self):
+        self.combo_sequence = []
+        self.combo_timer = 0
+        self.combo_definitions = {
+            ('DOWN', 'RIGHT', 'ATTACK'): 'Fireball',
+            ('LEFT', 'LEFT', 'ATTACK'): 'Dash Punch'
+        }
+        self.combo_timeout = 1.0  # seconds
+
+    def update(self, event):
+        current_time = time.time()
+        if event.type == pygame.KEYDOWN:
+            key_name = pygame.key.name(event.key).upper()
+            self.combo_sequence.append((key_name, current_time))
+            # Remove old inputs
+            self.combo_sequence = [(k, t) for k, t in self.combo_sequence if current_time - t <= self.combo_timeout]
+            # Check for combos
+            keys_only = [k for k, t in self.combo_sequence]
+            for combo_keys, move in self.combo_definitions.items():
+                if tuple(keys_only[-len(combo_keys):]) == combo_keys:
+                    print(f"Combo executed: {move}")
+                    self.combo_sequence.clear()
+                    break
+# Define controls for both players
+player1_controls = {
+    'left': pygame.K_a,
+    'right': pygame.K_d,
+    'jump': pygame.K_w,
+    'attack': pygame.K_s,
+    'special': pygame.K_q
+}
+
+player2_controls = {
+    'left': pygame.K_LEFT,
+    'right': pygame.K_RIGHT,
+    'jump': pygame.K_UP,
+    'attack': pygame.K_DOWN,
+    'special': pygame.K_RSHIFT
+}
+
+# Initialize players
+player1 = Fighter(x=100, y=300, controls=player1_controls, sprite_folder='ninja')
+player2 = Fighter(x=600, y=300, controls=player2_controls, sprite_folder='brawler')
+
+# In the game loop, update both players
+player1.update(keys_pressed)
+player2.update(keys_pressed)
+def display_win_screen(winner_name):
+    screen.fill((0, 0, 0))
+    font = pygame.font.SysFont(None, 72)
+    text = font.render(f"{winner_name} Wins!", True, (255, 255, 255))
+    rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+    screen.blit(text, rect)
+    pygame.display.flip()
+    pygame.time.delay(3000)
+# Load sounds
+attack_sound = pygame.mixer.Sound('assets/sounds/attack.wav')
+hit_sound = pygame.mixer.Sound('assets/sounds/hit.wav')
+special_sound = pygame.mixer.Sound('assets/sounds/special.wav')
+
+# Play sound on attack
+attack_sound.play()
+fighting_game/
+├── assets/
+│   ├── backgrounds/
+│   │   ├── stage1.png
+│   │   └── stage2.png
+│   ├── characters/
+│   │   ├── ninja/
+│   │   │   ├── idle/
+│   │   │   ├── walk/
+│   │   │   ├── jump/
+│   │   │   ├── attack/
+│   │   │   └── special/
+│   │   └── brawler/
+│   │       ├── idle/
+│   │       ├── walk/
+│   │       ├── jump/
+│   │       ├── attack/
+│   │       └── special/
+│   └── sounds/
+│       ├── attack.wav
+│       ├── hit.wav
+│       └── special.wav
+├── main.py
+└── README.md
